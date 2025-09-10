@@ -396,15 +396,23 @@ export class SankeyChartComponent implements OnInit, OnDestroy, OnChanges {
         console.log('Has tmls:', !!connectedLink.tmls);
         
         if (connectedLink.tmlData) {
-          console.log('Expanding node with TML data:', connectedLink.tmlData.length, 'records');
+          console.log('Expanding node with tmlData:', connectedLink.tmlData.length, 'records');
           
           // Emit event to parent component with node data and TML data
           this.nodeExpand.emit({
             nodeData: nodeData,
             tmlData: connectedLink.tmlData
           });
+        } else if (connectedLink.tmls) {
+          console.log('Expanding node with tmls data');
+          
+          // Emit event to parent component with node data and TML data
+          this.nodeExpand.emit({
+            nodeData: nodeData,
+            tmlData: connectedLink.tmls
+          });
         } else {
-          console.log('No tmlData found in connected link');
+          console.log('No tmlData or tmls found in connected link');
         }
       } else {
         console.log('No connected link found for node');

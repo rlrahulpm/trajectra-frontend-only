@@ -17,6 +17,7 @@ export interface SankeyLink {
   target: number;
   value: number;
   tmls?: TmlData;
+  tmlData?: any[];
   width?: number;
 }
 

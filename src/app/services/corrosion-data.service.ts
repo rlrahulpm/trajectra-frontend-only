@@ -402,8 +402,125 @@ export class CorrosionDataService {
     expandedNodeData: any, 
     expandedTmlData: any[]
   ): Promise<void> {
-    // Simulate expanded Sankey functionality
     await this.simulateApiDelay();
-    console.log('Expanded Sankey data generation simulated');
+    console.log('Generating expanded Sankey data for:', expandedNodeData.name);
+    
+    try {
+      const measurements = await this.getMeasurements();
+      const tmls = await this.getAllTmls();
+      
+      // Create maps for quick lookup
+      const tmlMap = new Map();
+      tmls.forEach(tml => tmlMap.set(tml.id, tml));
+      
+      // Get measurements for the expand date (next month)
+      const expandMonth = expandToDate.substring(0, 7); // e.g., '2025-03'
+      const expandMonthName = new Date(expandToDate).toLocaleDateString('en-US', { month: 'long' });
+      
+      // Filter measurements for the expanded TMLs on the expand date
+      const expandedMeasurements = measurements.filter(measurement => {
+        const measurementMonth = measurement.measurementDate.substring(0, 7);
+        if (measurementMonth !== expandMonth) return false;
+        
+        const tml = tmlMap.get(measurement.tmlRecordId);
+        if (!tml) return false;
+        
+        // Check if this TML is in our expanded data
+        if (Array.isArray(expandedTmlData)) {
+          // If expandedTmlData is an array of TML records
+          return expandedTmlData.some(record => record.tmlId === tml.tmlId);
+        } else if (typeof expandedTmlData === 'object') {
+          // If expandedTmlData is the tmls object (circuit -> tml ids)
+          return Object.values(expandedTmlData).some((tmlIds: any) => 
+            tmlIds.includes(tml.tmlId)
+          );
+        }
+        return false;
+      });
+      
+      console.log(`Found ${expandedMeasurements.length} measurements for expanded view`);
+      
+      // Create the expanded Sankey data
+      const expandedData: CorrosionData = {
+        nodes: [
+          { 
+            name: `TMLs from ${expandedNodeData.name} category` 
+          }
+        ],
+        links: []
+      };
+      
+      // Group expanded measurements by their new categories
+      const newCategoryGroups: { [key: string]: any[] } = {};
+      
+      expandedMeasurements.forEach(measurement => {
+        const rate = measurement.corrosionRate || 0;
+        const category = this.getCorrosionCategory(rate);
+        
+        if (!newCategoryGroups[category]) {
+          newCategoryGroups[category] = [];
+        }
+        newCategoryGroups[category].push({
+          ...measurement,
+          tml: tmlMap.get(measurement.tmlRecordId)
+        });
+      });
+      
+      // Add nodes and links for each new category
+      let targetIndex = 1;
+      Object.entries(newCategoryGroups).forEach(([category, records]) => {
+        if (records.length > 0) {
+          const categoryWithMonth = `${category} (${expandMonthName})`;
+          expandedData.nodes.push({ name: categoryWithMonth });
+          
+          // Create TML data for this category
+          const tmlData: { [key: string]: string[] } = {};
+          records.forEach(record => {
+            const circuitId = record.tml.circuitId;
+            const tmlId = record.tml.tmlId;
+            
+            if (!tmlData[circuitId]) {
+              tmlData[circuitId] = [];
+            }
+            tmlData[circuitId].push(tmlId);
+          });
+          
+          // Sort TML IDs within each circuit
+          Object.keys(tmlData).forEach(circuit => {
+            tmlData[circuit].sort((a, b) => {
+              const numA = parseInt(a.replace(/\D/g, ''), 10);
+              const numB = parseInt(b.replace(/\D/g, ''), 10);
+              return numA - numB;
+            });
+          });
+          
+          expandedData.links.push({
+            source: 0,
+            target: targetIndex,
+            value: records.length,
+            tmls: tmlData,
+            tmlData: records
+          });
+          
+          targetIndex++;
+        }
+      });
+      
+      console.log('Generated expanded data:', expandedData);
+      
+      // Update the data subject with expanded view
+      this.dataSubject.next(expandedData);
+      
+    } catch (error) {
+      console.error('Error generating expanded sankey data:', error);
+    }
+  }
+
+  private getCorrosionCategory(rate: number): string {
+    if (rate < 10) return '< 10 mpy';
+    else if (rate < 20) return '10-20 mpy';
+    else if (rate < 30) return '20-30 mpy';
+    else if (rate < 50) return '30-50 mpy';
+    else return '> 50 mpy';
   }
 }

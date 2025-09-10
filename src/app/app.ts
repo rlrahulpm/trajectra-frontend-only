@@ -170,8 +170,53 @@ export class App implements OnInit {
     this.isModalVisible.set(true);
   }
 
-  onNodeExpand(expandData: {nodeData: any, tmlData: any[]}): void {
+  async onNodeExpand(expandData: {nodeData: any, tmlData: any[]}): Promise<void> {
     console.log('Node expansion requested:', expandData);
+    
+    const rate = parseFloat(this.initialRate());
+    const start = this.startDate();
+    const end = this.endDate();
+    
+    // Find the next available month for expansion
+    const monthOrder = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    const endMonthIndex = monthOrder.indexOf(this.selectedEndMonth());
+    const nextMonthIndex = endMonthIndex + 1;
+    
+    if (nextMonthIndex < this.availableMonths().length && nextMonthIndex < monthOrder.length) {
+      const nextMonth = this.availableMonths().find(month => 
+        monthOrder.indexOf(month) === monthOrder.indexOf(this.availableMonths()[nextMonthIndex])
+      );
+      
+      if (nextMonth) {
+        const nextMonthDates = this.dateToMonthMap.get(nextMonth);
+        if (nextMonthDates && nextMonthDates.length > 0) {
+          const expandToDate = nextMonthDates[0];
+          
+          // Set the expanded month context
+          this.expandedMonthContext = {
+            start: this.selectedStartMonth(),
+            end: nextMonth
+          };
+          
+          try {
+            await this.corrosionDataService.generateExpandedSankeyData(
+              start, 
+              end, 
+              expandToDate, 
+              rate, 
+              expandData.nodeData, 
+              expandData.tmlData
+            );
+          } catch (error) {
+            console.error('Error generating expanded data:', error);
+          }
+        }
+      }
+    }
   }
 
   onBackClick(): void {
@@ -204,11 +249,27 @@ export class App implements OnInit {
     }
 
     const totalCount = this.getTotalTmlCount();
-    const rate = this.initialRate();
-    const startMonth = this.selectedStartMonth();
-    const endMonth = this.selectedEndMonth();
+    
+    // Check if we're in expanded view
+    const isExpandedView = data.nodes.length > 0 && 
+      data.nodes[0].name.includes('TMLs from') && 
+      data.nodes[0].name.includes('category');
 
-    return `${totalCount} TMLs with corrosion rates ≤ ${rate} mpy in ${startMonth}, categorized by corrosion rate in ${endMonth}. Select any flow to view detailed TML and circuit information.`;
+    if (isExpandedView) {
+      // In expanded view, use the expanded month context
+      const startMonth = this.expandedMonthContext?.start || this.selectedStartMonth();
+      const endMonth = this.expandedMonthContext?.end || this.selectedEndMonth();
+      const sourceCategory = data.nodes[0].name.replace('TMLs from ', '').replace(' category', '');
+      
+      return `${totalCount} TMLs from ${sourceCategory} in ${startMonth}, redistributed by corrosion rate in ${endMonth}. Select any flow to view detailed TML and circuit information.`;
+    } else {
+      // In main view, use the regular description
+      const rate = this.initialRate();
+      const startMonth = this.selectedStartMonth();
+      const endMonth = this.selectedEndMonth();
+
+      return `${totalCount} TMLs with corrosion rates ≤ ${rate} mpy in ${startMonth}, categorized by corrosion rate in ${endMonth}. Select any flow to view detailed TML and circuit information.`;
+    }
   }
 
   private processDatesByMonth(dates: string[]): void {
