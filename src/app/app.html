@@ -1,0 +1,113 @@
+<div class="main-container">
+  
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="page-title">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="5" cy="5" r="2" fill="url(#gradient)"/>
+        <circle cx="19" cy="5" r="2" fill="url(#gradient)"/>
+        <circle cx="5" cy="19" r="2" fill="url(#gradient)"/>
+        <circle cx="19" cy="19" r="2" fill="url(#gradient)"/>
+        <circle cx="12" cy="12" r="3" stroke="url(#gradient)" stroke-width="2" fill="none"/>
+        <path d="M7 5H17" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M5 7V17" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M19 7V17" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M7 19H17" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M7.5 7.5L9.5 9.5" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M16.5 7.5L14.5 9.5" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M7.5 16.5L9.5 14.5" stroke="url(#gradient)" stroke-width="2"/>
+        <path d="M16.5 16.5L14.5 14.5" stroke="url(#gradient)" stroke-width="2"/>
+        <defs>
+          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4a90e2"/>
+            <stop offset="100%" style="stop-color:#4a90e2"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      TRAJECTRA
+    </h1>
+  </div>
+
+  <!-- Main Content with Sidebar Layout -->
+  <div class="content-layout">
+    <!-- Left Sidebar with Filters -->
+    <div class="sidebar-filters">
+      <h2 class="filters-title">Data Filters</h2>
+      <div class="filter-controls">
+        <!-- Block 1: Initial Criteria -->
+        <div class="filter-block">
+          <h3 class="block-title">Initial Criteria</h3>
+          <div class="input-group">
+            <label for="startMonth" class="input-label">Start Month</label>
+            <select 
+              id="startMonth" 
+              class="form-input"
+              [value]="selectedStartMonth()"
+              (change)="onInputChange('startMonth', $event)">
+              <option value="" disabled>Select start month</option>
+              @for (month of availableMonths(); track month) {
+                <option [value]="month">{{ month }}</option>
+              }
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="initialRate" class="input-label">Max Corrosion Rate</label>
+            <input 
+              type="text" 
+              id="initialRate" 
+              class="form-input" 
+              placeholder="Enter value in mpy" 
+              [value]="initialRate()"
+              (input)="onInputChange('initialRate', $event)" />
+            <span class="input-unit">mils/year</span>
+          </div>
+        </div>
+
+        <!-- Block 2: End Date -->
+        <div class="filter-block">
+          <h3 class="block-title">Tracking Target</h3>
+          <div class="input-group">
+            <label for="endMonth" class="input-label">End Month</label>
+            <select 
+              id="endMonth" 
+              class="form-input"
+              [value]="selectedEndMonth()"
+              (change)="onInputChange('endMonth', $event)">
+              <option value="" disabled>Select end month</option>
+              @for (month of availableEndMonths(); track month) {
+                <option [value]="month">{{ month }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sankey Chart -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <p class="chart-description">
+          {{getChartDescription()}}
+        </p>
+      </div>
+      <app-sankey-chart 
+        [availableMonths]="availableMonths()"
+        [selectedEndMonth]="selectedEndMonth()"
+        (linkClick)="onLinkClick($event)"
+        (nodeExpand)="onNodeExpand($event)"
+        (backClick)="onBackClick()">
+      </app-sankey-chart>
+    </div>
+  </div>
+
+  <!-- TML Modal -->
+  <app-tml-modal 
+    [isVisible]="isModalVisible()" 
+    [tmlData]="selectedTmlData()" 
+    [selectedDates]="selectedModalDates()"
+    (close)="closeModal()">
+  </app-tml-modal>
+</div>
+
+
+<router-outlet />
